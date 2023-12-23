@@ -1,0 +1,6 @@
+{
+  "games": [
+    { "id": 1, "player": "Alice", "score": 15 },
+    { "id": 2, "player": "Bob", "score": 18 }
+  ]
+}

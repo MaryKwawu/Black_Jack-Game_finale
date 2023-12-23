@@ -1,0 +1,77 @@
+<app-header></app-header>
+<div class="card-icons">
+  <div class="row justify-content-center">
+    <div class="col-auto">
+      <div class="icon-container">
+        <button (click)="getPlayers()">
+          <fa-icon [icon]="faBox" class="fa-3x"></fa-icon>
+          <!-- <i class=" fas faBox fa-3x"></i> -->
+        </button>
+
+        <p class="text-style">Deck</p>
+      </div>
+
+      <div class="icon-container">
+        <button>
+          <i class="fas fa-gamepad fa-3x"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <ul>
+      <li *ngFor="let player of players">
+        <h1>
+          {{ player.name }}
+        </h1>
+      </li>
+    </ul>
+
+    <ul>
+      <li *ngFor="let card of cards">
+        {{ card.suit }}
+      </li>
+    </ul>
+
+    <ul>
+      <li *ngFor="let round of rounds">
+        {{ round.players }}
+      </li>
+    </ul>
+
+    <ul>
+      <li *ngFor="let deck of decks">
+        {{ deck.cards }}
+      </li>
+    </ul>
+
+    <ul>
+      <li *ngFor="let newgames of newgames">
+        {{ newgames.names }}
+      </li>
+    </ul>
+
+  </div>
+
+  <div class="magic-wand">
+    <button>
+      <fa-icon [icon]="faLayerGroup" class="fa-3x"></fa-icon>
+    </button>
+    <p>Round</p>
+  </div>
+  <div class="light-bulb">
+    <button>
+      <fa-icon [icon]="faUser" class="fa-3x"></fa-icon>
+    </button>
+    <p>Player</p>
+  </div>
+  <div class="undo-btn">
+    <button (click)="getCards()">
+      <fa-icon [icon]="faDiamond" class="fa-3x"></fa-icon>
+    </button>
+    <p>Card</p>
+  </div>
+</div>
+
+<app-button></app-button>
