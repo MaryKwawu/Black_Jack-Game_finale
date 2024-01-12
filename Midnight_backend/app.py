@@ -6,6 +6,7 @@ from sqlalchemy.orm import relationship
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
 from sqlalchemy.orm import joinedload
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 
 
 load_dotenv()
@@ -24,46 +25,30 @@ ma = Marshmallow(app)
 CORS(app)
 
 
-class newGame(db.Model):
+class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(50))
-    players = relationship("Player", backref="game")
-    deck = relationship("Deck", backref="game")
+    name = db.Column(db.String(100))
+    score = db.Column(db.Integer, nullable=True)
+    round_id = db.Column(db.Integer, db.ForeignKey("round.id"), nullable=True)
+    game_id = db.Column(db.Integer, db.ForeignKey("game.id"), nullable=True)
+    # is_active = db.Column(db.Boolean, default=False)
+    is_winner = db.Column(db.Boolean, default=False)
 
-    def __init__(self, name, players, deck):
+    def __init__(self, name, score, is_winner, round_id, game_id):
         self.name = name
-        self.players = players
-        self.deck = deck
-
-
-class newGameSchema(ma.Schema):
-    class Meta:
-        fields = ("id", "name", "players", "deck")
-
-
-newgame_schema = newGameSchema()
-newgames_schema = newGameSchema(many=True)
-
-
-class Deck(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    cards = relationship("Card", backref="cards_deck")
-    shuffled = db.Column(db.Boolean, default=False)
-    game_id = db.Column(db.Integer, db.ForeignKey(newGame.id), nullable=True)
-
-    def __init__(self, cards, shuffled, game_id):
-        self.cards = cards
-        self.shuffled = shuffled
+        self.score = score
+        # self.is_active = is_active
+        self.is_winner = is_winner
+        self.round_id = round_id
         self.game_id = game_id
 
 
-class DeckSchema(ma.Schema):
+class PlayerSchema(SQLAlchemyAutoSchema):
     class Meta:
-        fields = ("id", "cards", "shuffled")
+      model = Player
 
 
-deck_schema = DeckSchema()
-decks_schema = DeckSchema(many=True)
+player_schema = PlayerSchema()
 
 
 class Card(db.Model):
@@ -71,7 +56,7 @@ class Card(db.Model):
     suit = db.Column(db.String(50), nullable=True)
     rank = db.Column(db.String(50), nullable=True)
     value = db.Column(db.Integer)
-    deck_id = db.Column(db.Integer, db.ForeignKey(Deck.id), nullable=True)
+    deck_id = db.Column(db.Integer, db.ForeignKey("deck.id"), nullable=True)
     is_drawn = db.Column(db.Boolean, default=False)
 
     def __init__(self, suit, rank, value, deck_id, is_drawn):
@@ -82,14 +67,29 @@ class Card(db.Model):
         self.is_drawn = is_drawn
 
 
-class CardSchema(ma.Schema):
+class CardSchema(SQLAlchemyAutoSchema):
     class Meta:
-        fields = ("id", "suit", "rank", "value", "deck_id", "is_drawn")
+       model = Card
 
 
 card_schema = CardSchema()
-cards_schema = CardSchema(many=True)
+class Deck(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    cards = relationship("Card", backref="deck")
+    shuffled = db.Column(db.Boolean, default=False)
+    game_id = db.Column(db.Integer, db.ForeignKey("game.id"), nullable=True)
 
+    def __init__(self, cards, shuffled, game_id):
+        self.cards = cards
+        self.shuffled = shuffled
+        self.game_id = game_id
+
+
+class DeckSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Deck
+
+deck_schema = DeckSchema()
 
 class Round(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -101,49 +101,29 @@ class Round(db.Model):
         self.players = players
 
 
-class RoundSchema(ma.Schema):
+class RoundSchema(SQLAlchemyAutoSchema):
     class Meta:
-        fields = ("id", "number", "players")
+        model = Round
 
 
 round_schema = RoundSchema()
-rounds_schema = RoundSchema(many=True)
 
-
-class Player(db.Model):
+class Game(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(100))
-    score = db.Column(db.Integer, nullable=True)
-    round_id = db.Column(db.Integer, db.ForeignKey(Round.id), nullable=True)
-    game_id = db.Column(db.Integer, db.ForeignKey(newGame.id), nullable=True)
-    is_active = db.Column(db.Boolean, default=False)
-    is_winner = db.Column(db.Boolean, default=False)
+    name = db.Column(db.String(50))
+    players = relationship("Player", backref="game")
+    deck = relationship("Deck", backref="game")
 
-    def __init__(self, name, score, is_active, is_winner, is_round, game_id):
+    def __init__(self, name, players, deck):
         self.name = name
-        self.score = score
-        self.is_active = is_active
-        self.is_winner = is_winner
-        self.is_round = is_round
-        self.game_id = game_id
+        self.players = players
+        self.deck = deck
 
-
-class PlayerSchema(ma.Schema):
+class GameSchema(SQLAlchemyAutoSchema):
     class Meta:
-        fields = (
-            "id",
-            "name",
-            "score",
-            "round_id",
-            "game_id",
-            "is_active",
-            "is_winner",
-        )
+        model = Game 
 
-
-player_schema = PlayerSchema()
-players_schema = PlayerSchema(many=True)
-
+game_schema = GameSchema()
 
 @app.get("/")
 def home():
@@ -164,13 +144,13 @@ def create_card():
     db.session.add(new_card)
     db.session.commit()
 
-    return card_schema.jsonify(new_card)
+    return jsonify(card_schema.dump(new_card))
 
 
 # gets all cards
 @app.get("/card")
 def get_cards():
-    cards = cards_schema.dump(Card.query.all())
+    cards = card_schema.dump(Card.query.all(),many=True)
     return jsonify(cards)
 
 
@@ -207,10 +187,10 @@ def create_player():
     score = request.json["score"]
     round_id = request.json["round_id"]
     game_id = request.json["game_id"]
-    is_active = request.json["is_active"]
+    # is_active = request.json["is_active"]
     is_winner = request.json["is_winner"]
 
-    new_player = Player(name, score, is_active, is_winner, round_id, game_id, )
+    new_player = Player(name, score, is_winner, round_id, game_id, )
 
     db.session.add(new_player)
     db.session.commit()
@@ -262,8 +242,21 @@ def create_newgame():
 
 @app.get("/newgame")
 def get_newgames():
-    newgames = newgames_schema.dump(newGame.query.all())
-    return jsonify(newgames)
+    newgames = newGame.query.all()
+
+    # Filter out 'Deck' and 'Players' from each game in the list
+    modified_newgames = [
+        {
+            'id': game.id,  # Include other fields as needed
+            'name': game.name,
+            # Exclude 'Deck' and 'Players'
+            # 'Deck': game.Deck,
+            # 'Players': game.Players,
+        }
+        for game in newgames
+    ]
+
+    return jsonify(modified_newgames)
 
 
 @app.get("/newgame/<id>")
@@ -283,7 +276,7 @@ def delete_newgame(id):
 def update_newgame(id):
     newGame.query.filter_by(id=id).update(request.json)
     db.session.commit()
-    return newGame_schema.jsonify(newGame.query.get(id))
+    return jsonify(newgame_schema.load(newGame.query.get(id)))
 
 @app.route('/deck', methods=['POST'])
 def create_deck():
@@ -304,6 +297,20 @@ def create_deck():
     db.session.commit()
 
     return jsonify({'message': 'Deck created successfully'}), 201
+
+@app.get("/deck")
+def get_decks():
+   
+ decks = Deck.query.all()
+ modified_decks = [
+        {
+            'id': deck.id,  # Include other fields as needed
+            'name': deck.cards
+        }
+        for deck in decks
+    ]
+ return jsonify(modified_decks)
+
 
 
 @app.get("/deck/<id>")
@@ -363,4 +370,4 @@ def round_deck(id):
 def update_round(id):
     round.query.filter_by(id=id).update(request.json)
     db.session.commit()
-    return Round_schema.jsonify(Round.query.get(id))
+    return round_schema.jsonify(Round.query.get(id))
