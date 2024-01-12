@@ -158,21 +158,22 @@ def get_cards():
 @app.get("/card/<id>")
 def get_card(id):
     card = Card.query.get(id)
-    return card_schema.jsonify(card)
+    return jsonify(card_schema.dump(card))
 
 
 @app.delete("/card/<id>")
 def delete_card(id):
     Card.query.filter_by(id=id).delete()
     db.session.commit()
-    return card_schema.jsonify(id)
+    return jsonify(id)
 
 
 @app.patch("/card/<id>")
 def update_card(id):
     Card.query.filter_by(id=id).update(request.json)
     db.session.commit()
-    return card_schema.jsonify(Card.query.get(id))
+    card = Card.query.get(id)
+    return jsonify(card_schema.dump(card))
 
 
 with app.app_context():
@@ -195,90 +196,91 @@ def create_player():
     db.session.add(new_player)
     db.session.commit()
 
-    return player_schema.jsonify(new_player)
+    return jsonify(player_schema.dump(new_player))
 
 
 @app.get("/player")
 def get_players():
-    players = players_schema.dump(Player.query.all())
+    players = player_schema.dump(Player.query.all(), many=True)
     return jsonify(players)
 
 
 @app.get("/player/<id>")
 def get_player(id):
     player = Player.query.get(id)
-    return player_schema.jsonify(player)
+    return jsonify(player_schema.dump(player))
 
 
 @app.delete("/player/<id>")
 def delete_player(id):
     Player.query.filter_by(id=id).delete()
     db.session.commit()
-    return player_schema.jsonify(id)
+    return jsonify(id)
 
 
 @app.patch("/player/<id>")
 def update_player(id):
     Player.query.filter_by(id=id).update(request.json)
     db.session.commit()
-    return card_schema.jsonify(Player.query.get(id))
+    player = Player.query.get(id)
+    return jsonify(player_schema.dump(player))
 
 
-@app.post("/newgame")
-def create_newgame():
+@app.post("/game")
+def create_game():
     # id = request.json["id"]
     name = request.json["name"]
     # score = request.json["score"]
     players = request.json["players"]
     deck = request.json["deck"]
 
-    new_game = newGame(name, players, deck)
+    new_game = Game(name, players, deck)
 
     db.session.add(new_game)
     db.session.commit()
 
-    return newgame_schema.jsonify(new_game)
+    return jsonify(game_schema.dump(new_game))
 
 
-@app.get("/newgame")
-def get_newgames():
-    newgames = newGame.query.all()
+@app.get("/game")
+def get_games():
+    games = Game.query.all()
 
     # Filter out 'Deck' and 'Players' from each game in the list
-    modified_newgames = [
+    modified_games = [
         {
-            'id': game.id,  # Include other fields as needed
+            'id': game.id,
             'name': game.name,
-            # Exclude 'Deck' and 'Players'
-            # 'Deck': game.Deck,
-            # 'Players': game.Players,
+            "players": player_schema.dump(game.players, many=True),
+            "deck": deck_schema.dump(game.deck,many=True)
         }
-        for game in newgames
+        for game in games
     ]
 
-    return jsonify(modified_newgames)
+    return jsonify(modified_games)
 
 
-@app.get("/newgame/<id>")
-def get_newgame(id):
-    newgame = newGame.query.get(id)
-    return newgame_schema.jsonify(newgame)
+@app.get("/game/<id>")
+def get_game(id):
+    game = Game.query.get(id)
+    return jsonify(game_schema.dump(game))
 
 
-@app.delete("/newgame/<id>")
-def delete_newgame(id):
-    newGame.query.filter_by(id=id).delete()
+@app.delete("/game/<id>")
+def delete_game(id):
+    Game.query.filter_by(id=id).delete()
     db.session.commit()
-    return newgame_schema.jsonify(id)
+    return game_schema.jsonify(id)
 
 
-@app.patch("/newgame/<id>")
-def update_newgame(id):
-    newGame.query.filter_by(id=id).update(request.json)
+@app.patch("/game/<id>")
+def update_game(id):
+    Game.query.filter_by(id=id).update(request.json)
     db.session.commit()
-    return jsonify(newgame_schema.load(newGame.query.get(id)))
+    game = Game.query.get(id)
+    return jsonify(game_schema.dump(game))
 
-@app.route('/deck', methods=['POST'])
+@app.post('/deck')
 def create_deck():
     form = request.get_json()
     cards = form.get('cards')
@@ -296,16 +298,17 @@ def create_deck():
     db.session.add(new_deck)
     db.session.commit()
 
-    return jsonify({'message': 'Deck created successfully'}), 201
+    return jsonify(deck_schema.dump(new_deck))
 
 @app.get("/deck")
 def get_decks():
-   
+    
  decks = Deck.query.all()
  modified_decks = [
         {
             'id': deck.id,  # Include other fields as needed
-            'name': deck.cards
+            'cards': card_schema.dump(deck.cards, many=True),
+            'shuffled': deck.shuffled
         }
         for deck in decks
     ]
@@ -316,21 +319,22 @@ def get_decks():
 @app.get("/deck/<id>")
 def get_deck(id):
     deck = Deck.query.get(id)
-    return deck_schema.jsonify(deck)
+    return jsonify(deck_schema.dump(deck))
 
 
 @app.delete("/deck/<id>")
 def delete_deck(id):
     Deck.query.filter_by(id=id).delete()
     db.session.commit()
-    return deck_schema.jsonify(id)
+    return jsonify(id)
 
 
 @app.patch("/deck/<id>")
 def update_deck(id):
-    deck.query.filter_by(id=id).update(request.json)
+    Deck.query.filter_by(id=id).update(request.json)
     db.session.commit()
-    return Deck_schema.jsonify(Deck.query.get(id))
+    deck = Deck.query.get(id)
+    return jsonify(deck_schema.dump(deck))
 
 
 @app.post("/round")
@@ -344,30 +348,31 @@ def create_round():
     db.session.add(new_round)
     db.session.commit()
 
-    return round_schema.jsonify(new_round)
+    return jsonify(round_schema.dump(new_round))
 
 
 @app.get("/round")
 def get_rounds():
-    rounds = rounds_schema.dump(Round.query.all())
+    rounds = round_schema.dump(Round.query.all(), many=True)
     return jsonify(rounds)
 
 
 @app.get("/round/<id>")
 def get_round(id):
     round = Round.query.get(id)
-    return round_schema.jsonify(round)
+    return jsonify(round_schema.dump(round))
 
 
 @app.delete("/round/<id>")
 def round_deck(id):
     Round.query.filter_by(id=id).delete()
     db.session.commit()
-    return round_schema.jsonify(id)
+    return jsonify(id)
 
 
 @app.patch("/round/<id>")
 def update_round(id):
-    round.query.filter_by(id=id).update(request.json)
+    Round.query.filter_by(id=id).update(request.json)
     db.session.commit()
-    return round_schema.jsonify(Round.query.get(id))
+    round = round_schema.dump(Round.query.get(id))
+    return jsonify(round)
